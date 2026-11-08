@@ -1,0 +1,26 @@
+# Секреты и локальные переменные среды
+.env
+.env.production
+.env.local
+
+# Сгенерированные конфигурации (с реальными ключами)
+config/routing/config.json
+
+# Ключи и сертификаты (на всякий случай)
+*.key
+*.pem
+*.crt
+*.p8
+*.pub
+
+# Временные файлы и кэш
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Базы данных
+*.db
+*.sqlite
+*.sqlite3
