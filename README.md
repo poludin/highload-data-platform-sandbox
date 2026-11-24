@@ -1,5 +1,20 @@
 # HighLoad Data Platform Sandbox
 
+A 14-month `#BuildInPublic` R&D track and bare-metal/local sandbox dedicated to distributed systems, Linux kernel mechanics, Kubernetes internals, and stateful application reliability.
+
+## 🎯 Mission Statement
+Transitioning from standard infrastructure deployment to deep **Data SRE and Platform Engineering**. Rather than stopping at manifests, Helm charts, and baseline policies, this repository focuses on how clusters, kernels, networks, and stateful engines degrade under load—and how to prevent cascading failures. Every theoretical concept is validated through hands-on labs, fault injection, telemetry, and Go automation.
+
+## 🏗 Sandbox Architecture
+The environment combines a local Ubuntu control-plane/lab setup with a bare-metal **Proxmox VE** cluster running **Kubernetes / OKD**.
+* **Storage:** Local Persistent Volumes on raw block devices, `StorageClass` binding modes (`WaitForFirstConsumer` vs `Immediate`), `Delete`/`Retain` policies, and `RollingUpdate` vs `OnDelete` quorum behavior.
+* **Networking & Traffic:** Packet path analysis across XDP/TC/sockmap and `conntrack`, Cilium `kube-proxy` replacement, `NetworkPolicy` enforcement, CoreDNS (`ndots:5`, UDP conntrack races), and Ingress vs Gateway API (L4/L7, timeouts, retries, circuit breaking).
+* **Kernel & Runtime:** `cgroups v2` (`working_set` vs `rss`, `page_cache`, `kmem`), `Guaranteed` QoS OOM edge cases, CFS CPU throttling and `p99` tail latency, graceful shutdown races (`SIGTERM`, `preStop`, `EndpointSlices`), and `bpftrace` profiling.
+* **Governance & GitOps:** Least-privilege RBAC, Kyverno / admission guardrails, drift control, upgrade compatibility, and architectural trade-offs.
+* **Automation:** Custom Go-based Kubernetes Operators (`controller-runtime`, Kubebuilder).
+
+---
+
 ### 🛠 Tech Stack & Tools
 
 **Systems Programming & Automation**  
@@ -14,56 +29,47 @@
 ![Cilium](https://img.shields.io/badge/cilium-%23F6D15E.svg?style=for-the-badge&logo=cilium&logoColor=black)
 
 **Distributed Databases & Messaging**  
-![ClickHouse](https://img.shields.io/badge/ClickHouse-FFCC01?style=for-the-badge&logo=clickhouse&logoColor=black)
 ![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000?style=for-the-badge&logo=apachekafka&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
+![ClickHouse](https://img.shields.io/badge/ClickHouse-FFCC01?style=for-the-badge&logo=clickhouse&logoColor=black)
 ![ScyllaDB](https://img.shields.io/badge/ScyllaDB-62B4CB?style=for-the-badge&logo=scylladb&logoColor=white)
 
-**Observability & Telemetry**  
+**Observability, Telemetry & Policy**  
 ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
 ![Grafana](https://img.shields.io/badge/grafana-%23F46800.svg?style=for-the-badge&logo=grafana&logoColor=white)
 ![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-000000.svg?style=for-the-badge&logo=opentelemetry&logoColor=white)
 
-A comprehensive 14-month R&D track and bare-metal sandbox dedicated to distributed systems, kernel-level networking, and stateful application reliability. 
-
-## 🎯 Mission Statement
-Transitioning from standard infrastructure deployment to deep **Data SRE and Platform Engineering**. This repository serves as an open engineering diary and portfolio, documenting the process of breaking, observing, and automating enterprise-grade stateful systems on Kubernetes. The methodology is strictly "lab-first": every theoretical concept is immediately tested by pulling the plug on a running cluster.
-
-## 🏗 Sandbox Architecture
-The environment is built on a bare-metal **Proxmox VE** cluster running **Kubernetes/OKD**. 
-* **Storage:** Local Persistent Volumes (Raw block devices, direct I/O, no network storage abstractions).
-* **Networking:** Moving from standard CNI (iptables/kube-proxy) to eBPF-based routing (Cilium).
-* **Automation:** Custom Go-based Kubernetes Operators (`controller-runtime`, Kubebuilder).
+---
 
 ## 🗺 R&D Roadmap & Modules
 
-### [Phase 0: K8s Control Plane Internals](./00-k8s-control-plane-internals/)
-* **Focus:** Dismantling K8s magic. 
-* **Key Labs:** `etcd` snapshot/restore surgery, manual PKI certificate rotation, static pod assassination, and simulating network blackouts on worker nodes.
+### [Phase 0: K8s Control Plane & Scheduler Internals](./00-k8s-control-plane-internals/)
+* **Focus:** Control plane request pipeline, Raft/etcd stability, scheduling constraints, and disruption limits.
+* **Key Labs:** Static pods, `etcd` snapshot/restore, `compact` and `defrag` under `fsync` latency, API Priority and Fairness (APF) under `PATCH/UPDATE` storms, `topologySpreadConstraints`, workqueue behavior, `PodDisruptionBudget` (PDB) boundaries, manual PKI rotation, and node network blackouts.
 
-### [Phase 1: Messaging, Consensus & Disaster Recovery](./01-kafka-federation/) *(In Progress)*
-* **Focus:** Apache Kafka physical storage and cross-datacenter replication.
-* **Key Labs:** Deploying KRaft without ZooKeeper via Strimzi, forcing split-brain scenarios, Page Cache & zero-copy (`sendfile`) utilization, and Active-Passive federation using MirrorMaker 2.
+### [Phase 1: Messaging, Consensus & Disaster Recovery](./01-kafka-federation/) *(Active)*
+* **Focus:** Apache Kafka physical storage, quorum resilience, safe stateful rollouts, and cross-cluster replication.
+* **Key Labs:** Deploying KRaft without ZooKeeper via Strimzi on Local PVs, Page Cache & zero-copy (`sendfile`) I/O, ISR & broker `kill -9` chaos tests, `RollingUpdate` vs `OnDelete` impact on replication/quorum, and Active-Passive federation via MirrorMaker 2.
 
 ### [Phase 2: Concurrent Go Clients](./02-go-clients/)
-* **Focus:** Resilient application-level integration.
-* **Key Labs:** Building high-throughput (1000+ RPS) Kafka producers and consumers in Go. Implementing worker pools, exponential backoff retries, and graceful shutdowns during broker failures.
+* **Focus:** Resilient application-level streaming and pod lifecycle integration.
+* **Key Labs:** Building high-throughput (1000+ RPS) Kafka producers/consumers in Go with worker pools, `context.Context` deadlines, exponential backoff retries, and graceful shutdowns aligned with `SIGTERM`, `preStop`, and `EndpointSlices`.
 
-### [Phase 3: Linux Network Tuning & eBPF](./03-network-tuning/)
-* **Focus:** Squeezing maximum throughput out of the Linux kernel.
-* **Key Labs:** TCP Window Scaling, NIC RX/TX ring buffers tuning, replacing `kube-proxy` with Cilium (XDP/eBPF), and writing `bpftrace` scripts to profile disk I/O (`fsync` latency) in real-time.
+### [Phase 3: Linux Kernel, Network Tuning & eBPF](./03-network-tuning/)
+* **Focus:** Kernel resource isolation, TCP/NIC throughput, eBPF data paths, DNS, and L4/L7 routing.
+* **Key Labs:** `cgroups v2` (`working_set` vs `rss`/`page_cache`/`kmem`), `Guaranteed` OOM edge cases, CFS CPU throttling vs `p99` tail latency, TCP & NIC ring buffer tuning, Cilium `kube-proxy` replacement (XDP/TC/sockmap/conntrack), CoreDNS (`ndots:5`, UDP conntrack races), Gateway API routing, and `bpftrace` `fsync` profiling.
 
 ### [Phase 4: Heavyweight Distributed Databases](./04-distributed-dbs/)
-* **Focus:** LSM-trees, Columnar storage, and Thread-per-core architectures.
-* **Key Labs:** 
-  * **PostgreSQL:** Autovacuum tuning and HA failover validation (CloudNativePG / Patroni).
-  * **ClickHouse:** Merges, sparse indexes, and ClickHouse Keeper quorum.
-  * **ScyllaDB:** CPU pinning (Guaranteed QoS), bypassing the OS cache (`O_DIRECT`), and consistent hashing.
+* **Focus:** LSM-trees, columnar storage, thread-per-core execution, and stateful storage reliability.
+* **Key Labs:**
+  * **PostgreSQL:** WAL/MVCC, bloat and autovacuum tuning, HA failover, and connection pooling trade-offs.
+  * **ClickHouse:** `MergeTree` parts, sparse indexes, background merges, and ClickHouse Keeper quorum.
+  * **ScyllaDB:** CPU pinning (`Guaranteed` QoS), bypassing OS page cache (`O_DIRECT`), consistent hashing, and `p99` latency under load.
 
-### [Phase 5: Kubernetes Operators & SRE Patterns](./05-k8s-operators/)
-* **Focus:** Automating infrastructure state.
-* **Key Labs:** Building Custom Resource Definitions (CRDs) via Kubebuilder. Writing a Go controller with a reconciliation loop to automate database provisioning and user management, enforcing strict idempotency and safe failovers.
+### [Phase 5: Kubernetes Operators, Governance & SRE Trade-offs](./05-k8s-operators/)
+* **Focus:** Custom controllers, policy guardrails, GitOps lifecycle, and architectural decisions.
+* **Key Labs:** Building CRDs and Go controllers via Kubebuilder (`Reconcile` loop, idempotency, finalizers), least-privilege RBAC, Kyverno / admission policies, GitOps drift and cluster/component upgrades, burn-rate SLO alerting, blameless post-mortems, and architecture trade-offs (single vs multi-cluster, operator vs externalized stateful tiers).
 
 ---
 **Author:** Aleksandr Poludin  
-**Connect:** [LinkedIn](https://www.linkedin.com/in/poludin/) | Follow my weekly deep-dives and post-mortems under the `#BuildInPublic` hashtag.
+**Connect:** [LinkedIn](https://www.linkedin.com/in/poludin/) | Follow weekly deep-dives and post-mortems under `#BuildInPublic`.
