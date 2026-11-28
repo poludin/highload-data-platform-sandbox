@@ -6,7 +6,6 @@ The goal of this module is to move beyond Kubernetes abstractions (Deployments, 
 ## 🏗 Architecture & Mental Model
 
 ![Control Plane Architecture](./architecture.jpeg)
-*(Draw an Excalidraw diagram here showing kubelet managing static pods and apiserver talking to etcd)*
 
 Unlike managed K8s (EKS, GKE) or heavy enterprise distributions (OKD, OpenShift), this environment is bootstrapped via `kubeadm` to expose the raw Control Plane. There is no magic: the Control Plane is simply a set of standard containers managed by a local `kubelet` watching a specific directory on the master node.
 
